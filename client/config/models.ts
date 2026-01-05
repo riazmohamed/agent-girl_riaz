@@ -77,6 +77,13 @@ export const AVAILABLE_MODELS: ModelConfig[] = [
     provider: 'z-ai',
   },
   {
+    id: 'glm-4.7',
+    name: 'GLM 4.7',
+    description: 'Z.AI\'s latest flagship model with enhanced reasoning and coding capabilities',
+    apiModelId: 'glm-4.7',
+    provider: 'z-ai',
+  },
+  {
     id: 'kimi-k2-thinking',
     name: 'Kimi K2 Thinking',
     description: 'Extended thinking model for complex reasoning tasks',
