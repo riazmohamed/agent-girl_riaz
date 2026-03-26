@@ -50,9 +50,9 @@ export const AVAILABLE_MODELS: ModelConfig[] = [
   },
   {
     id: 'sonnet',
-    name: 'Sonnet 4.5',
-    description: 'Balanced intelligence and speed for complex agents and coding',
-    apiModelId: 'claude-sonnet-4-5-20250929',
+    name: 'Sonnet 4.6',
+    description: 'Best combination of speed and intelligence for coding and agents',
+    apiModelId: 'claude-sonnet-4-6',
     provider: 'anthropic',
   },
   {
@@ -63,9 +63,16 @@ export const AVAILABLE_MODELS: ModelConfig[] = [
     provider: 'anthropic',
   },
   {
+    id: 'glm-5-turbo',
+    name: 'GLM 5 Turbo',
+    description: 'Z.AI\'s high-speed model for efficient long-chain agent tasks',
+    apiModelId: 'glm-5-turbo',
+    provider: 'z-ai',
+  },
+  {
     id: 'glm-5',
     name: 'GLM 5',
-    description: 'Z.AI\'s latest flagship model for powerful reasoning and coding',
+    description: 'Z.AI\'s flagship model for complex engineering and agentic tasks',
     apiModelId: 'glm-5',
     provider: 'z-ai',
   },
