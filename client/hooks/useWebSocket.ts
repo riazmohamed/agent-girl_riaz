@@ -197,6 +197,13 @@ interface ThinkingTokensSetEvent extends BaseWebSocketMessage {
   maxThinkingTokens: number;
 }
 
+interface DevServerDetectedEvent extends BaseWebSocketMessage {
+  type: 'dev_server_detected';
+  url: string;
+  kind: 'web' | 'expo';
+  bashId: string;
+}
+
 export type WebSocketMessage =
   | AssistantMessageEvent
   | ToolUseEvent
@@ -223,6 +230,7 @@ export type WebSocketMessage =
   | CheckpointCreatedEvent
   | FilesRewoundEvent
   | ThinkingTokensSetEvent
+  | DevServerDetectedEvent
   | BaseWebSocketMessage; // Fallback for unknown types
 
 export type { SlashCommand };

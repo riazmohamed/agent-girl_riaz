@@ -40,6 +40,11 @@ import { toast } from '../../utils/toast';
 import { showError } from '../../utils/errorMessages';
 import type { BackgroundProcess } from '../process/BackgroundProcessMonitor';
 import type { SlashCommand } from '../../hooks/useWebSocket';
+import { usePreviewStore } from '../../stores/previewStore';
+import { useResizablePanel } from '../../hooks/useResizablePanel';
+import { LivePreviewPanel } from '../preview/LivePreviewPanel';
+import { ResizeHandle } from '../preview/ResizeHandle';
+import { PreviewToggleButton } from '../preview/PreviewToggleButton';
 
 export function ChatContainer() {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -83,7 +88,7 @@ export function ChatContainer() {
 
   // Model selection
   const [selectedModel, setSelectedModel] = useState<string>(() => {
-    return localStorage.getItem('agent-boy-model') || 'sonnet';
+    return localStorage.getItem('agent-boy-model') || 'glm-5.1';
   });
 
   // Permission mode (simplified to just plan mode on/off)
@@ -112,6 +117,10 @@ export function ChatContainer() {
 
   // Build wizard state
   const [isBuildWizardOpen, setIsBuildWizardOpen] = useState(false);
+
+  // Preview panel state
+  const { isPreviewOpen, setPreviewUrl, setExpoQrUrl, openPreview, setPreviewMode, setLoading: setPreviewLoading } = usePreviewStore();
+  const { containerRef, panelWidthPercent, handlePointerDown, handleDoubleClick } = useResizablePanel();
 
   const sessionAPI = useSessionAPI();
 
@@ -1060,6 +1069,26 @@ export function ChatContainer() {
         // during long-running operations. No action needed - just acknowledge receipt.
         // Optionally log for debugging (commented out to reduce noise)
         // console.log(`💓 Keepalive received (${message.elapsedSeconds}s elapsed)`);
+      } else if (message.type === 'dev_server_detected' && 'url' in message && 'kind' in message) {
+        // Handle dev server auto-detection from background processes
+        const devMsg = message as { type: 'dev_server_detected'; url: string; kind: 'web' | 'expo'; bashId: string };
+
+        if (devMsg.kind === 'expo') {
+          setExpoQrUrl(devMsg.url);
+          setPreviewMode('native');
+          toast.success('Expo server detected', {
+            description: devMsg.url,
+            duration: 5000,
+          });
+        } else {
+          setPreviewUrl(devMsg.url);
+          setPreviewLoading(true);
+          openPreview();
+          toast.success('Dev server detected', {
+            description: `${devMsg.url} - Preview opened`,
+            duration: 5000,
+          });
+        }
       }
     },
   });
@@ -1277,133 +1306,158 @@ export function ChatContainer() {
         onChatRename={handleChatRename}
       />
 
-      {/* Main Chat Area */}
-      <div className="flex flex-col flex-1 h-screen" style={{ marginLeft: isSidebarOpen ? '260px' : '0', transition: 'margin-left 0.2s ease-in-out' }}>
-        {/* Header - Always visible */}
-        <nav className="header">
-          <div className="header-content">
-            <div className="header-inner">
-              {/* Left side */}
-              <div className="header-left">
-                {!isSidebarOpen && (
-                  <>
-                    {/* Sidebar toggle */}
-                    <button className="header-btn" aria-label="Toggle Sidebar" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
-                      <Menu />
-                    </button>
+      {/* Main content area (chat + preview) */}
+      <div
+        ref={containerRef}
+        className="flex flex-1 h-screen"
+        style={{ marginLeft: isSidebarOpen ? '260px' : '0', transition: 'margin-left 0.2s ease-in-out' }}
+      >
+        {/* Chat Area */}
+        <div
+          className="flex flex-col h-screen"
+          style={{ width: isPreviewOpen ? `${100 - panelWidthPercent}%` : '100%', transition: isPreviewOpen ? 'none' : 'width 0.2s ease-in-out' }}
+        >
+          {/* Header - Always visible */}
+          <nav className="header">
+            <div className="header-content">
+              <div className="header-inner">
+                {/* Left side */}
+                <div className="header-left">
+                  {!isSidebarOpen && (
+                    <>
+                      {/* Sidebar toggle */}
+                      <button className="header-btn" aria-label="Toggle Sidebar" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
+                        <Menu />
+                      </button>
 
-                    {/* New chat */}
-                    <button className="header-btn" aria-label="New Chat" onClick={handleNewChat}>
-                      <Edit3 />
-                    </button>
-                  </>
-                )}
-              </div>
+                      {/* New chat */}
+                      <button className="header-btn" aria-label="New Chat" onClick={handleNewChat}>
+                        <Edit3 />
+                      </button>
+                    </>
+                  )}
+                </div>
 
-            {/* Center - Logo and Model Selector */}
-            <div className="header-center">
-              <div className="flex flex-col items-start w-full">
-                <div className="flex justify-between items-center w-full">
-                  <div className="flex items-center gap-3">
-                    {!isSidebarOpen && (
-                      <img
-                        src="/client/agent-boy.svg"
-                        alt="Agent Girl"
-                        className="header-icon"
-                        loading="eager"
-                        onError={(e) => {
-                          console.error('Failed to load agent-boy.svg');
-                          // Retry loading
-                          setTimeout(() => {
-                            e.currentTarget.src = '/client/agent-boy.svg?' + Date.now();
-                          }, 100);
-                        }}
+              {/* Center - Logo and Model Selector */}
+              <div className="header-center">
+                <div className="flex flex-col items-start w-full">
+                  <div className="flex justify-between items-center w-full">
+                    <div className="flex items-center gap-3">
+                      {!isSidebarOpen && (
+                        <img
+                          src="/client/agent-boy.svg"
+                          alt="Agent Girl"
+                          className="header-icon"
+                          loading="eager"
+                          onError={(e) => {
+                            console.error('Failed to load agent-boy.svg');
+                            // Retry loading
+                            setTimeout(() => {
+                              e.currentTarget.src = '/client/agent-boy.svg?' + Date.now();
+                            }, 100);
+                          }}
+                        />
+                      )}
+                      <div className="header-title text-gradient">
+                        Agent Girl
+                      </div>
+                      {/* Model Selector */}
+                      <ModelSelector
+                        selectedModel={selectedModel}
+                        onModelChange={handleModelChange}
+                        hasMessages={messages.length > 0}
+                        disabled={messages.length > 0}
                       />
-                    )}
-                    <div className="header-title text-gradient">
-                      Agent Girl
                     </div>
-                    {/* Model Selector */}
-                    <ModelSelector
-                      selectedModel={selectedModel}
-                      onModelChange={handleModelChange}
-                      hasMessages={messages.length > 0}
-                      disabled={messages.length > 0}
-                    />
                   </div>
                 </div>
               </div>
-            </div>
 
-            {/* Right side */}
-            <div className="header-right">
-              {/* Radio Player */}
-              <RadioPlayer />
-              {/* Working Directory Display */}
-              {currentSessionId && sessions.find(s => s.id === currentSessionId)?.working_directory && (
-                <WorkingDirectoryDisplay
-                  directory={sessions.find(s => s.id === currentSessionId)?.working_directory || ''}
-                  sessionId={currentSessionId}
-                  onChangeDirectory={handleChangeDirectory}
-                />
-              )}
-              {/* About Button */}
-              <AboutButton />
+              {/* Right side */}
+              <div className="header-right">
+                {/* Preview Toggle Button */}
+                <PreviewToggleButton />
+                {/* Radio Player */}
+                <RadioPlayer />
+                {/* Working Directory Display */}
+                {currentSessionId && sessions.find(s => s.id === currentSessionId)?.working_directory && (
+                  <WorkingDirectoryDisplay
+                    directory={sessions.find(s => s.id === currentSessionId)?.working_directory || ''}
+                    sessionId={currentSessionId}
+                    onChangeDirectory={handleChangeDirectory}
+                  />
+                )}
+                {/* About Button */}
+                <AboutButton />
+              </div>
             </div>
           </div>
-        </div>
-      </nav>
+        </nav>
 
-        {messages.length === 0 ? (
-          // New Chat Welcome Screen
-          <NewChatWelcome
-            key={currentSessionId || 'welcome'}
-            inputValue={inputValue}
-            onInputChange={setInputValue}
-            onSubmit={handleSubmit}
-            onStop={handleStop}
-            disabled={!isConnected || isLoading}
-            isGenerating={isLoading}
-            isPlanMode={isPlanMode}
-            onTogglePlanMode={handleTogglePlanMode}
-            availableCommands={availableCommands}
-            onOpenBuildWizard={handleOpenBuildWizard}
-            mode={currentSessionMode}
-            thinkingTokens={thinkingTokens}
-            onThinkingTokensChange={handleThinkingTokensChange}
-          />
-        ) : (
-          // Chat Interface
-          <>
-            {/* Messages */}
-            <MessageList
-              messages={messages}
-              isLoading={isCurrentSessionLoading}
-              liveTokenCount={liveTokenCount}
-              scrollContainerRef={scrollContainerRef}
-              onRewindFiles={currentSessionId ? (sdkUuid) => rewindFiles(currentSessionId, sdkUuid) : undefined}
-            />
-
-            {/* Input */}
-            <ChatInput
-              key={currentSessionId || 'new-chat'}
-              value={inputValue}
-              onChange={setInputValue}
+          {messages.length === 0 ? (
+            // New Chat Welcome Screen
+            <NewChatWelcome
+              key={currentSessionId || 'welcome'}
+              inputValue={inputValue}
+              onInputChange={setInputValue}
               onSubmit={handleSubmit}
               onStop={handleStop}
               disabled={!isConnected || isLoading}
               isGenerating={isLoading}
               isPlanMode={isPlanMode}
               onTogglePlanMode={handleTogglePlanMode}
-              backgroundProcesses={backgroundProcesses.get(currentSessionId || '') || []}
-              onKillProcess={handleKillProcess}
-              mode={currentSessionId ? currentSessionMode : undefined}
               availableCommands={availableCommands}
-              contextUsage={currentSessionId ? contextUsage.get(currentSessionId) : undefined}
-              selectedModel={selectedModel}
+              onOpenBuildWizard={handleOpenBuildWizard}
+              mode={currentSessionMode}
               thinkingTokens={thinkingTokens}
               onThinkingTokensChange={handleThinkingTokensChange}
             />
+          ) : (
+            // Chat Interface
+            <>
+              {/* Messages */}
+              <MessageList
+                messages={messages}
+                isLoading={isCurrentSessionLoading}
+                liveTokenCount={liveTokenCount}
+                scrollContainerRef={scrollContainerRef}
+                onRewindFiles={currentSessionId ? (sdkUuid) => rewindFiles(currentSessionId, sdkUuid) : undefined}
+              />
+
+              {/* Input */}
+              <ChatInput
+                key={currentSessionId || 'new-chat'}
+                value={inputValue}
+                onChange={setInputValue}
+                onSubmit={handleSubmit}
+                onStop={handleStop}
+                disabled={!isConnected || isLoading}
+                isGenerating={isLoading}
+                isPlanMode={isPlanMode}
+                onTogglePlanMode={handleTogglePlanMode}
+                backgroundProcesses={backgroundProcesses.get(currentSessionId || '') || []}
+                onKillProcess={handleKillProcess}
+                mode={currentSessionId ? currentSessionMode : undefined}
+                availableCommands={availableCommands}
+                contextUsage={currentSessionId ? contextUsage.get(currentSessionId) : undefined}
+                selectedModel={selectedModel}
+                thinkingTokens={thinkingTokens}
+                onThinkingTokensChange={handleThinkingTokensChange}
+              />
+            </>
+          )}
+        </div>
+
+        {/* Preview Panel with Resize Handle */}
+        {isPreviewOpen && (
+          <>
+            <ResizeHandle
+              onPointerDown={handlePointerDown}
+              onDoubleClick={handleDoubleClick}
+            />
+            <div style={{ width: `${panelWidthPercent}%` }}>
+              <LivePreviewPanel />
+            </div>
           </>
         )}
       </div>

@@ -15,6 +15,7 @@ import { AGENT_REGISTRY } from "../agents";
 import { validateDirectory } from "../directoryUtils";
 import { saveImageToSessionPictures, saveFileToSessionFiles } from "../imageUtils";
 import { backgroundProcessManager } from "../backgroundProcessManager";
+import { detectDevServer } from "../services/devServerDetector";
 import { loadUserConfig } from "../userConfig";
 import { parseApiError, getUserFriendlyMessage } from "../utils/apiErrors";
 import { TimeoutController } from "../utils/timeout";
@@ -23,7 +24,7 @@ import { expandSlashCommand } from "../slashCommandExpander";
 import { createAskUserQuestionServer, setQuestionCallback, answerQuestion, cancelQuestion } from "../mcp/askUserQuestion";
 
 interface ChatWebSocketData {
-  type: 'hot-reload' | 'chat';
+  type: 'hot-reload' | 'chat' | 'simulator';
   sessionId?: string;
 }
 
@@ -49,6 +50,63 @@ AVAILABLE_MODELS.forEach(model => {
     provider: model.provider,
   };
 });
+
+/**
+ * Monitor a background process log file for dev server URLs
+ * Polls the log file for the first 30 seconds after process start
+ */
+function monitorForDevServer(
+  bashId: string,
+  sessionId: string,
+  ws: ServerWebSocket<ChatWebSocketData>,
+): void {
+  const processInfo = backgroundProcessManager.get(bashId);
+  if (!processInfo) return;
+
+  let lastSize = 0;
+  let detected = false;
+  let checks = 0;
+  const maxChecks = 30; // Check for 30 seconds
+
+  const interval = setInterval(async () => {
+    checks++;
+    if (detected || checks > maxChecks) {
+      clearInterval(interval);
+      return;
+    }
+
+    try {
+      const file = Bun.file(processInfo.logFile);
+      const exists = await file.exists();
+      if (!exists) return;
+
+      const currentSize = file.size;
+      if (currentSize <= lastSize) return;
+
+      const text = await file.text();
+      const newText = text.slice(lastSize);
+      lastSize = currentSize;
+
+      const result = detectDevServer(newText);
+      if (result) {
+        detected = true;
+        clearInterval(interval);
+
+        ws.send(JSON.stringify({
+          type: 'dev_server_detected',
+          url: result.url,
+          kind: result.type,
+          bashId,
+          sessionId,
+        }));
+
+        console.log(`🌐 Dev server detected: ${result.type} at ${result.url} (bash: ${bashId})`);
+      }
+    } catch {
+      // Ignore file read errors
+    }
+  }, 1000);
+}
 
 export async function handleWebSocketMessage(
   ws: ServerWebSocket<ChatWebSocketData>,
@@ -241,11 +299,11 @@ async function handleChatMessage(
   const isNewStream = !sessionStreamManager.hasStream(sessionId as string);
 
   // Get model configuration
-  const modelConfig = MODEL_MAP[model as string] || MODEL_MAP['sonnet'];
+  const modelConfig = MODEL_MAP[model as string] || MODEL_MAP['glm-5.1'];
   const { apiModelId, provider } = modelConfig;
 
   // Configure provider (sets ANTHROPIC_BASE_URL and ANTHROPIC_API_KEY env vars)
-  const providerType = provider as 'anthropic' | 'z-ai' | 'moonshot';
+  const providerType = provider as 'anthropic' | 'z-ai' | 'moonshot' | 'xiaomi';
 
   // Validate API key before proceeding (OAuth takes precedence over API key)
   try {
@@ -590,6 +648,9 @@ Run bash commands with the understanding that this is your current working direc
               description,
               startedAt: Date.now(),
             }));
+
+            // Monitor background process log for dev server URLs
+            monitorForDevServer(bashId, sessionId as string, ws);
 
             // Replace the command with an echo so the SDK gets a successful result
             // This prevents the agent from retrying

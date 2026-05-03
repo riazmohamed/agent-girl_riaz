@@ -25,7 +25,7 @@
  * Add new models here to make them available in the UI.
  */
 
-export type ProviderType = 'anthropic' | 'z-ai' | 'moonshot';
+export type ProviderType = 'anthropic' | 'z-ai' | 'moonshot' | 'xiaomi';
 
 export interface ModelConfig {
   id: string;
@@ -42,60 +42,25 @@ export interface ModelConfig {
  */
 export const AVAILABLE_MODELS: ModelConfig[] = [
   {
-    id: 'opus',
-    name: 'Claude Opus 4.5',
-    description: 'Anthropic\'s most powerful model for the most complex tasks',
-    apiModelId: 'claude-opus-4-5-20251101',
-    provider: 'anthropic',
-  },
-  {
-    id: 'sonnet',
-    name: 'Claude Sonnet 4.5',
-    description: 'Balanced intelligence and speed for complex agents and coding',
-    apiModelId: 'claude-sonnet-4-5-20250929',
-    provider: 'anthropic',
-  },
-  {
-    id: 'haiku',
-    name: 'Claude Haiku 4.5',
-    description: 'Fast and efficient model for quick tasks and rapid responses',
-    apiModelId: 'claude-haiku-4-5-20251001',
-    provider: 'anthropic',
-  },
-  {
-    id: 'glm-4.6',
-    name: 'GLM 4.6',
-    description: 'Z.AI\'s flagship model for powerful reasoning and coding',
-    apiModelId: 'glm-4.6',
+    id: 'glm-5.1',
+    name: 'GLM 5.1',
+    description: 'Z.AI\'s flagship agentic engineering model for long-horizon coding and autonomous execution',
+    apiModelId: 'glm-5.1',
     provider: 'z-ai',
   },
   {
-    id: 'glm-4.6v',
-    name: 'GLM 4.6V',
-    description: 'Z.AI\'s multimodal vision model with 128K context for images, video, and documents',
-    apiModelId: 'glm-4.6v',
-    provider: 'z-ai',
-  },
-  {
-    id: 'glm-4.7',
-    name: 'GLM 4.7',
-    description: 'Z.AI\'s latest flagship model with enhanced reasoning and coding capabilities',
-    apiModelId: 'glm-4.7',
-    provider: 'z-ai',
-  },
-  {
-    id: 'kimi-k2-thinking',
-    name: 'Kimi K2 Thinking',
-    description: 'Extended thinking model for complex reasoning tasks',
-    apiModelId: 'kimi-k2-thinking',
+    id: 'kimi-k2.6',
+    name: 'Kimi K2.6',
+    description: 'Moonshot\'s next-generation multimodal model for long-horizon coding and multi-agent orchestration',
+    apiModelId: 'kimi-k2.6',
     provider: 'moonshot',
   },
   {
-    id: 'kimi-k2-thinking-turbo',
-    name: 'Kimi K2 Thinking Turbo',
-    description: 'Fast thinking model for rapid complex reasoning',
-    apiModelId: 'kimi-k2-thinking-turbo',
-    provider: 'moonshot',
+    id: 'mimo-v2.5-pro',
+    name: 'MiMo V2.5 Pro',
+    description: 'Xiaomi\'s flagship MoE model with 1M-token context for complex software engineering and long-horizon agentic tasks',
+    apiModelId: 'mimo-v2.5-pro',
+    provider: 'xiaomi',
   },
 ];
 

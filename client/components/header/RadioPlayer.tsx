@@ -25,8 +25,8 @@ export function RadioPlayer() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
 
-  // Nightwave Plaza - Vaporwave/Synthwave radio for coding
-  const streamUrl = 'https://radio.plaza.one/mp3';
+  // Saudi Quran Radio - Tarateel
+  const streamUrl = 'https://Qurango.net/radio/tarateel';
 
   const handlePlay = () => {
     // Create audio element on first play (user interaction required)
@@ -78,7 +78,7 @@ export function RadioPlayer() {
           onClick={handleStop}
           className="p-2 hover:bg-white/10 rounded-lg transition-colors cursor-pointer"
           aria-label="Stop radio"
-          title="Stop Ambient Radio"
+          title="Stop Saudi Quran Radio"
           style={{ pointerEvents: 'auto', cursor: 'pointer' }}
         >
           <Square className="w-4 h-4" style={{ color: 'rgb(var(--text-secondary))', pointerEvents: 'none' }} />
@@ -88,7 +88,7 @@ export function RadioPlayer() {
           onClick={handlePlay}
           className="p-2 hover:bg-white/10 rounded-lg transition-colors cursor-pointer"
           aria-label="Play radio"
-          title="Play Ambient Radio (chill focus)"
+          title="Play Saudi Quran Radio (Tarateel)"
           style={{ pointerEvents: 'auto', cursor: 'pointer' }}
         >
           <Play className="w-4 h-4" style={{ color: 'rgb(var(--text-secondary))', pointerEvents: 'none' }} />

@@ -79,6 +79,13 @@ export const MCP_SERVERS_BY_PROVIDER: Record<ProviderType, Record<string, McpSer
       url: 'https://mcp.grep.app',
     },
   },
+  'xiaomi': {
+    // Grep.app MCP - code search across public GitHub repositories
+    'grep': {
+      type: 'http',
+      url: 'https://mcp.grep.app',
+    },
+  },
 };
 
 /**
@@ -126,6 +133,12 @@ export function getAllowedMcpTools(provider: ProviderType, _modelId?: string): s
   }
 
   if (provider === 'moonshot') {
+    return [
+      ...grepTools,
+    ];
+  }
+
+  if (provider === 'xiaomi') {
     return [
       ...grepTools,
     ];

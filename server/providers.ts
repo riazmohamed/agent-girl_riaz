@@ -34,6 +34,7 @@ export interface ProviderConfig {
 let cachedAnthropicKey: string | null = null;
 let cachedZaiKey: string | null = null;
 let cachedMoonshotKey: string | null = null;
+let cachedXiaomiKey: string | null = null;
 
 /**
  * Provider configurations
@@ -47,6 +48,7 @@ export async function getProviders(): Promise<Record<ProviderType, ProviderConfi
     cachedAnthropicKey = process.env.ANTHROPIC_API_KEY || '';
     cachedZaiKey = process.env.ZAI_API_KEY || '';
     cachedMoonshotKey = process.env.MOONSHOT_API_KEY || '';
+    cachedXiaomiKey = process.env.XIAOMI_API_KEY || '';
   }
 
   // Check for OAuth tokens for Anthropic provider
@@ -70,6 +72,12 @@ export async function getProviders(): Promise<Record<ProviderType, ProviderConfi
       apiKey: cachedMoonshotKey || '',
       name: 'Moonshot AI',
       oauthTokens: null, // Moonshot doesn't support OAuth
+    },
+    'xiaomi': {
+      baseUrl: 'https://api.xiaomimimo.com/anthropic',
+      apiKey: cachedXiaomiKey || '',
+      name: 'Xiaomi MiMo',
+      oauthTokens: null, // Xiaomi MiMo doesn't support OAuth
     },
   };
 }
@@ -142,6 +150,11 @@ export async function configureProvider(provider: ProviderType): Promise<void> {
         keyName = 'MOONSHOT_API_KEY';
         instructions = 'Get your API key from https://platform.moonshot.ai/';
         break;
+      case 'xiaomi':
+        providerName = 'Xiaomi MiMo';
+        keyName = 'XIAOMI_API_KEY';
+        instructions = 'Get your API key from https://platform.xiaomimimo.com/';
+        break;
       default:
         providerName = 'Unknown';
         keyName = 'API_KEY';
@@ -163,7 +176,7 @@ export async function configureProvider(provider: ProviderType): Promise<void> {
   }
 
   // Z.AI and Moonshot use Bearer token (ANTHROPIC_AUTH_TOKEN), not x-api-key
-  if (provider === 'z-ai' || provider === 'moonshot') {
+  if (provider === 'z-ai' || provider === 'moonshot' || provider === 'xiaomi') {
     process.env.ANTHROPIC_AUTH_TOKEN = config.apiKey;
     process.env.ANTHROPIC_API_KEY = '';
   } else {

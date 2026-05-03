@@ -51,7 +51,9 @@ import { handleSessionRoutes } from "./routes/sessions";
 import { handleDirectoryRoutes } from "./routes/directory";
 import { handleUserConfigRoutes } from "./routes/userConfig";
 import { handleCommandRoutes } from "./routes/commands";
+import { handlePreviewRoutes } from "./routes/preview";
 import { handleWebSocketMessage } from "./websocket/messageHandlers";
+import { handleSimulatorMessage, removeSimulatorClient } from "./services/simulatorService";
 import type { ServerWebSocket, Server as ServerType } from "bun";
 
 // Initialize startup configuration (loads env vars, sets up PostCSS)
@@ -71,7 +73,7 @@ interface HotReloadClient {
 
 // Chat WebSocket clients
 interface ChatWebSocketData {
-  type: 'hot-reload' | 'chat';
+  type: 'hot-reload' | 'chat' | 'simulator';
   sessionId?: string;
 }
 
@@ -109,12 +111,18 @@ const server = Bun.serve({
     },
 
     async message(ws: ServerWebSocket<ChatWebSocketData>, message: string) {
+      if (ws.data?.type === 'simulator') {
+        await handleSimulatorMessage(ws, message);
+        return;
+      }
       await handleWebSocketMessage(ws, message, activeQueries);
     },
 
     close(ws: ServerWebSocket<ChatWebSocketData>) {
       if (ws.data?.type === 'hot-reload') {
         hotReloadClients.delete(ws);
+      } else if (ws.data?.type === 'simulator') {
+        removeSimulatorClient(ws);
       } else if (ws.data?.type === 'chat' && ws.data?.sessionId) {
         console.log(`🔌 WebSocket disconnected: session ${ws.data.sessionId.substring(0, 8)}`);
       }
@@ -141,6 +149,14 @@ const server = Bun.serve({
       return;
     }
 
+    if (url.pathname === '/ws/simulator') {
+      const upgraded = server.upgrade(req, { data: { type: 'simulator' } });
+      if (!upgraded) {
+        return new Response('WebSocket upgrade failed', { status: 400 });
+      }
+      return;
+    }
+
     // Try session routes
     const sessionResponse = await handleSessionRoutes(req, url, activeQueries);
     if (sessionResponse) {
@@ -157,6 +173,12 @@ const server = Bun.serve({
     const userConfigResponse = await handleUserConfigRoutes(req, url);
     if (userConfigResponse) {
       return userConfigResponse;
+    }
+
+    // Try preview routes
+    const previewResponse = await handlePreviewRoutes(req, url);
+    if (previewResponse) {
+      return previewResponse;
     }
 
     // Try command routes
